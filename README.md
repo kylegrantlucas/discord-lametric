@@ -6,12 +6,13 @@ A simple daemon that listens to a Discord server/channels and publishes the mess
 
 ### Go
 
-`go get -u github.com/kylegrantlucas/discord-lametric`
-`env DISCORD_EMAIL=xxxx DISCORD_PASSWORD=xxxx DISCORD_SERVER_ID=xxxx LAMETRIC_IP=xxxx LAMETRIC_API_KEY=xxx discord-lametric`
+`$ go get -u github.com/kylegrantlucas/discord-lametric`
+
+`$ env DISCORD_EMAIL=xxxx DISCORD_PASSWORD=xxxx DISCORD_SERVER_ID=xxxx LAMETRIC_IP=xxxx LAMETRIC_API_KEY=xxx discord-lametric`
 
 ### Docker
 
-`docker run -e DISCORD_EMAIL=xxxx -e DISCORD_PASSWORD=xxxx -e DISCORD_SERVER_ID=xxxx -e LAMETRIC_IP=xxxx -e LAMETRIC_API_KEY=xxx kylegrantlucas/discord-lametric`
+`$ docker run -e DISCORD_EMAIL=xxxx -e DISCORD_PASSWORD=xxxx -e DISCORD_SERVER_ID=xxxx -e LAMETRIC_IP=xxxx -e LAMETRIC_API_KEY=xxx kylegrantlucas/discord-lametric`
 
 ### Docker Compose
 

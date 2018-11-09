@@ -37,12 +37,13 @@ func (c Client) Notify(iconID int, message string) error {
 	}
 
 	client := http.Client{}
-	request, err := http.NewRequest("POST", fmt.Sprintf("http://%v/api/v2/device/notifications", c.Host), bytes.NewReader(body))
+	request, err := http.NewRequest("POST", fmt.Sprintf("http://%v:8080/api/v2/device/notifications", c.Host), bytes.NewReader(body))
 	if err != nil {
 		log.Fatalf("Error opening Discord session: %v", err)
 	}
 
 	b64Key := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("dev:%v", c.APIKey)))
+
 	request.Header.Add("Authorization", fmt.Sprintf("Basic %v", b64Key))
 	request.Header.Add("Content-Type", "application/json")
 
