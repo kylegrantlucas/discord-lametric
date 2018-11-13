@@ -1,0 +1,32 @@
+variables:
+  PACKAGE_PATH: /go/src/github.com/kylegrantlucas/discord-lametric
+
+stages:
+  - test
+  - build
+
+# A hack to make Golang-in-Gitlab happy
+.anchors:
+  - &inject-gopath
+      mkdir -p $(dirname ${PACKAGE_PATH})
+      && ln -s ${CI_PROJECT_DIR} ${PACKAGE_PATH}
+      && cd ${PACKAGE_PATH}
+
+test:
+  stage: test
+  image: golang:1.11-alpine
+  before_script:
+    - *inject-gopath
+  script:
+    - go test ./...
+
+build:
+  stage: build
+  dependencies:
+    - dep
+  image: docker:17
+  services:
+    - docker:dind
+  script:
+    - docker build -t kylegrantlucas/discord-lametric:latest .
+    - docker push kylegrantlucas/discord-lametric:latest
