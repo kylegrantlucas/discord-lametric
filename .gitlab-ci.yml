@@ -23,7 +23,7 @@ test:
 build:
   stage: build
   dependencies:
-    - dep
+    - test
   image: docker:17
   services:
     - docker:dind
