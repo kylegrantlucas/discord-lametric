@@ -1,5 +1,5 @@
 variables:
-  PACKAGE_PATH: /go/src/github.com/kylegrantlucas/discord-lametric
+  PACKAGE_PATH: /go/src/github.com/kylegrantlucas/lametric-discord
 
 stages:
   - test
@@ -9,7 +9,7 @@ stages:
 .anchors:
   - &inject-gopath
       mkdir -p $(dirname ${PACKAGE_PATH})
-      && cp -R ${CI_PROJECT_DIR} ${PACKAGE_PATH}
+      && ln -s ${CI_PROJECT_DIR} ${PACKAGE_PATH}
       && cd ${PACKAGE_PATH}
 
 test:
