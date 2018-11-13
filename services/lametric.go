@@ -16,28 +16,41 @@ type Client struct {
 }
 
 type Notification struct {
-	Model Model `json:"model"`
+	IconType *string `json:"icon_type,omitempty"`
+	Priority *string `json:"priority,omitempty"`
+	Model    Model   `json:"model"`
 }
 
 type Model struct {
-	Frames []Frame `json:"frames"`
+	Frames []Frame `json:"frames,omitempty"`
+	Sound  *Sound  `json:"sound,omitempty"`
 }
 
 type Frame struct {
-	Icon int    `json:"icon"`
-	Text string `json:"text"`
+	Icon *string `json:"icon"`
+	Text string  `json:"text"`
 }
 
-func (c Client) Notify(iconID int, message string) error {
-	notification := Notification{Model: Model{Frames: []Frame{{Icon: iconID, Text: message}}}}
+type Sound struct {
+	Category string `json:"category,omitempty"`
+	ID       string `json:"id,omitempty"`
+	Repeat   int    `json:"repeat,omitempty"`
+}
 
+func (c Client) Notify(notification Notification) error {
+	log.Print(notification)
 	body, err := json.Marshal(notification)
 	if err != nil {
 		return err
 	}
 
 	client := http.Client{}
-	request, err := http.NewRequest("POST", fmt.Sprintf("http://%v:8080/api/v2/device/notifications", c.Host), bytes.NewReader(body))
+
+	request, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("http://%v:8080/api/v2/device/notifications", c.Host),
+		bytes.NewReader(body),
+	)
 	if err != nil {
 		log.Fatalf("Error opening Discord session: %v", err)
 	}
@@ -46,7 +59,7 @@ func (c Client) Notify(iconID int, message string) error {
 
 	request.Header.Add("Authorization", fmt.Sprintf("Basic %v", b64Key))
 	request.Header.Add("Content-Type", "application/json")
-
+	log.Print(request)
 	resp, err := client.Do(request)
 	if err != nil {
 		log.Fatalf("Error opening Discord session: %v", err)

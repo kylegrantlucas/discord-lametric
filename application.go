@@ -1,54 +1,64 @@
 package main
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
-	"strconv"
-	"strings"
 	"syscall"
 
+	"github.com/kylegrantlucas/lametric-discord/models"
 	"github.com/kylegrantlucas/lametric-discord/services"
 
 	"github.com/bwmarrin/discordgo"
 )
 
-var allowedChannelIDs = []string{}
-var serverID, lametricIP, lametricAPIKey string
-var iconID int
+var allowedChannelsMap = map[string]string{}
+var allowedServersMap = map[string]string{}
+var config models.Config
+var lametricClient lametric.Client
 
 func init() {
 	var err error
-	serverID = os.Getenv("DISCORD_SERVER_ID")
-	lametricIP = os.Getenv("LAMETRIC_IP")
-	lametricAPIKey = os.Getenv("LAMETRIC_API_KEY")
-	iconID, err = strconv.Atoi(os.Getenv("LAMETRIC_ICON_ID"))
-	if err != nil {
-		iconID = 0
+	var file string
+	if os.Getenv("CONFIG_FILE") != "" {
+		file = os.Getenv("CONFIG_FILE")
+	} else {
+		file = "./config.default.json"
 	}
+
+	configJSON, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Fatalf("Error opening Discord session: %v", err)
+	}
+
+	err = json.Unmarshal(configJSON, &config)
+	if err != nil {
+		log.Fatalf("Error opening Discord session: %v", err)
+	}
+
+	lametricClient = lametric.Client{Host: config.LaMetricIP, APIKey: config.LaMetricAPIKey}
 }
+
 func main() {
-	discord, err := discordgo.New(os.Getenv("DISCORD_EMAIL"), os.Getenv("DISCORD_PASSWORD"))
+	discord, err := discordgo.New(config.DiscordEmail, config.DiscordPassword)
 	if err != nil {
 		log.Fatalf("Error opening Discord session: %v", err)
 	}
 
-	allowedChannels := strings.Split(os.Getenv("DISCORD_CHANNELS"), ",")
-
-	channels, err := discord.GuildChannels(serverID)
+	allowedServersMap, err = buildAllowedServerList(discord, config)
 	if err != nil {
 		log.Fatalf("Error opening Discord session: %v", err)
 	}
 
-	for _, ch := range channels {
-		for _, allowed := range allowedChannels {
-			if ch.Name == allowed {
-				allowedChannelIDs = append(allowedChannelIDs, ch.ID)
-			}
-		}
+	allowedChannelsMap, err = buildAllowedChannelList(discord, allowedServersMap, config)
+	if err != nil {
+		log.Fatalf("Error opening Discord session: %v", err)
 	}
 
-	log.Printf("allowing on channels: %v", allowedChannelIDs)
+	log.Printf("allowing on servers: %v", allowedServersMap)
+	log.Printf("allowing on channels: %v", allowedChannelsMap)
 
 	// Register messageCreate callback
 	discord.AddHandler(messageCreate)
@@ -67,26 +77,116 @@ func main() {
 	discord.Close()
 }
 
+func buildLaMetricNotification(message string, channelConfig *models.ChannelConfig) lametric.Notification {
+	notif := lametric.Notification{
+		IconType: channelConfig.IconType,
+		Priority: channelConfig.Priority,
+		Model: lametric.Model{
+			Frames: []lametric.Frame{
+				{
+					Icon: channelConfig.Icon,
+					Text: message,
+				},
+			},
+		},
+	}
+
+	if channelConfig.Sound != nil {
+		notif.Model.Sound = &lametric.Sound{
+			Category: channelConfig.Sound.Category,
+			ID:       channelConfig.Sound.ID,
+			Repeat:   channelConfig.Sound.Repeat,
+		}
+	}
+
+	return notif
+}
+
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
 
-	if m.GuildID == serverID && channelIsAllowed(m.ChannelID) {
-		client := lametric.Client{Host: lametricIP, APIKey: lametricAPIKey}
-		err := client.Notify(iconID, m.Content)
-		if err != nil {
-			log.Print(err)
+	if serverIsAllowed(m.GuildID) && channelIsAllowed(m.ChannelID) {
+		channelConfig := fetchChannelConfig(m.ChannelID)
+		if channelConfig != nil {
+			err := lametricClient.Notify(
+				buildLaMetricNotification(m.Message.Content, channelConfig),
+			)
+			if err != nil {
+				log.Print(err)
+			}
+		} else {
+			log.Printf("channel is not configured: %v, %v", allowedChannelsMap[m.ChannelID], m.ChannelID)
 		}
 	}
 }
 
-func channelIsAllowed(id string) bool {
-	for _, allowed := range allowedChannelIDs {
-		if id == allowed {
-			return true
+func fetchChannelConfig(channelID string) *models.ChannelConfig {
+	for _, server := range config.Servers {
+		for _, channel := range server.Channels {
+			if channel.Name == allowedChannelsMap[channelID] {
+				return &channel
+			}
 		}
 	}
 
+	return nil
+}
+
+func channelIsAllowed(id string) bool {
+	if allowedChannelsMap[id] != "" {
+		return true
+	}
+
 	return false
+}
+
+func serverIsAllowed(id string) bool {
+	if allowedServersMap[id] != "" {
+		return true
+	}
+
+	return false
+}
+
+func buildAllowedChannelList(discord *discordgo.Session, serversMap map[string]string, config models.Config) (map[string]string, error) {
+	ids := map[string]string{}
+	for serverID := range serversMap {
+		channels, err := discord.GuildChannels(serverID)
+		if err != nil {
+			log.Fatalf("Error building channel list: %v", err)
+			return map[string]string{}, err
+		}
+
+		for _, ch := range channels {
+			for _, server := range config.Servers {
+				for _, allowed := range server.Channels {
+					if ch.Name == allowed.Name {
+						ids[ch.ID] = ch.Name
+					}
+				}
+			}
+		}
+	}
+
+	return ids, nil
+}
+
+func buildAllowedServerList(discord *discordgo.Session, config models.Config) (map[string]string, error) {
+	ids := map[string]string{}
+	guilds, err := discord.UserGuilds(50, "", "")
+	if err != nil {
+		return map[string]string{}, err
+	}
+
+	for _, guild := range guilds {
+		for _, allowed := range config.Servers {
+			if guild.Name == allowed.Name {
+				ids[guild.ID] = guild.Name
+			}
+		}
+	}
+
+	return ids, nil
 }
