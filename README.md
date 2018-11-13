@@ -1,5 +1,7 @@
 # discord-lametric
 
+[![pipeline status](https://gitlab.com/kylegrantlucas/discord-lametric/badges/master/pipeline.svg)](https://gitlab.com/kylegrantlucas/discord-lametric/commits/master)
+
 A simple daemon that listens to a Discord server/channels and publishes the messages to a LaMetric clock.
 
 ## Usage

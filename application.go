@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/kylegrantlucas/lametric-discord/models"
-	"github.com/kylegrantlucas/lametric-discord/services"
+	"github.com/kylegrantlucas/discord-lametric/models"
+	"github.com/kylegrantlucas/discord-lametric/services"
 
 	"github.com/bwmarrin/discordgo"
 )
