@@ -9,7 +9,7 @@ stages:
 .anchors:
   - &inject-gopath
       mkdir -p $(dirname ${PACKAGE_PATH})
-      && ln -s ${CI_PROJECT_DIR} ${PACKAGE_PATH}
+      && cp -R ${CI_PROJECT_DIR} ${PACKAGE_PATH}
       && cd ${PACKAGE_PATH}
 
 test:
