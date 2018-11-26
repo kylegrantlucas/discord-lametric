@@ -20,6 +20,7 @@ var config models.Config
 var lametricClient lametric.Client
 
 func init() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	var err error
 	var file string
 	if os.Getenv("CONFIG_FILE") != "" {
@@ -42,19 +43,19 @@ func init() {
 }
 
 func main() {
-	discord, err := discordgo.New(config.DiscordEmail, config.DiscordPassword)
+	discord, err := discordgo.New(config.DiscordEmail, config.DiscordPassword, config.DiscordToken)
 	if err != nil {
 		log.Fatalf("Error opening Discord session: %v", err)
 	}
 
 	allowedServersMap, err = buildAllowedServerList(discord, config)
 	if err != nil {
-		log.Fatalf("Error opening Discord session: %v", err)
+		log.Fatalf("Error building server list: %v", err)
 	}
 
 	allowedChannelsMap, err = buildAllowedChannelList(discord, allowedServersMap, config)
 	if err != nil {
-		log.Fatalf("Error opening Discord session: %v", err)
+		log.Fatalf("Error building channel list: %v", err)
 	}
 
 	log.Printf("allowing on servers: %v", allowedServersMap)
